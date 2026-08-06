@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CEIR IMEI Check</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body { background-color: #121212; color: white; font-family: sans-serif; }
+    </style>
+</head>
+<body class="p-6">
+    <div class="max-w-md mx-auto space-y-6">
+        <header class="pt-8">
+            <h1 class="text-3xl font-bold text-white mb-2">CEIR IMEI Check</h1>
+            <p class="text-gray-400 text-sm mb-4">IMEI စစ်ဆေးခြင်း</p>
+        </header>
+
+        <div class="space-y-4">
+            <div class="relative">
+                <input type="text" id="imeiInput" placeholder="IMEI ထည့်ပါ" class="w-full bg-[#1e1e24] border border-gray-700 rounded-xl px-4 py-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition-shadow">
+                <button id="scanBtn" class="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-white transition-colors">
+                    📷
+                </button>
+            </div>
+            
+            <button id="checkBtn" class="w-full bg-[#2f8d46] hover:bg-[#267a3a] text-white rounded-xl py-4 px-4 font-medium transition-colors">
+                စစ်ဆေးရန်
+            </button>
+            
+            <p id="errorMsg" class="text-red-400 text-sm text-center hidden"></p>
+        </div>
+
+        <div id="resultBox" class="mt-8 space-y-4 hidden">
+            <div class="flex items-center text-green-400 font-medium space-x-2">
+                <span>✅ Done</span>
+            </div>
+            
+            <div class="bg-[#1e1e24] rounded-xl border border-gray-800 overflow-hidden text-sm">
+                <div class="grid grid-cols-[140px_1fr] border-b border-gray-800 bg-[#25252c] p-4 text-gray-400 font-medium">
+                    <div>အကြောင်းအရာ</div>
+                    <div>ရလဒ်</div>
+                </div>
+                
+                <div class="divide-y divide-gray-800/50">
+                    <div class="grid grid-cols-[140px_1fr] p-4 items-center">
+                        <div class="text-gray-300">📱 IMEI</div>
+                        <div id="resImei" class="text-white break-all"></div>
+                    </div>
+                    <div class="grid grid-cols-[140px_1fr] p-4 items-center">
+                        <div class="text-gray-300">📱 Device</div>
+                        <div id="resDevice" class="text-white"></div>
+                    </div>
+                    <div class="grid grid-cols-[140px_1fr] p-4 items-center">
+                        <div class="text-gray-300">💰 အခွန်</div>
+                        <div id="resTax" class="font-medium"></div>
+                    </div>
+                    <div class="grid grid-cols-[140px_1fr] p-4 items-center">
+                        <div class="text-gray-300">🔒 ဖုန်းလိုင်း</div>
+                        <div id="resBlock" class="font-medium"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="freePassBox" class="bg-[#1e1e24] rounded-xl border border-blue-900/50 p-5 mt-4 hidden">
+                <div class="flex items-center space-x-2 text-blue-400 font-medium mb-2">
+                    <span>📱 Free Pass ဖုန်း</span>
+                </div>
+                <p class="text-gray-400 text-sm leading-relaxed">
+                    ယခုဖုန်းသည် April လအရှေ့မှာ free pass အနေနဲ့ စာရင်းဝင်ထားသောဖုန်းဖြစ်ပါသည်။
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scanner Modal -->
+    <div id="scannerModal" class="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-4 hidden">
+        <div class="w-full max-w-md bg-[#1e1e24] rounded-2xl overflow-hidden shadow-2xl relative">
+            <div class="flex justify-between items-center p-4 border-b border-gray-800">
+                <h2 class="text-white font-medium">Scan IMEI Barcode</h2>
+                <button id="closeScanBtn" class="text-gray-400 hover:text-white">✖</button>
+            </div>
+            <div class="p-4 bg-black">
+                <div id="qr-reader" class="w-full mx-auto" style="max-width: 400px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const imeiInput = document.getElementById('imeiInput');
+        const checkBtn = document.getElementById('checkBtn');
+        const scanBtn = document.getElementById('scanBtn');
+        const closeScanBtn = document.getElementById('closeScanBtn');
+        const scannerModal = document.getElementById('scannerModal');
+        const errorMsg = document.getElementById('errorMsg');
+        const resultBox = document.getElementById('resultBox');
+        const freePassBox = document.getElementById('freePassBox');
+
+        let html5QrcodeScanner = null;
+
+        scanBtn.addEventListener('click', () => {
+            scannerModal.classList.remove('hidden');
+            html5QrcodeScanner = new Html5QrcodeScanner(
+                "qr-reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false
+            );
+            html5QrcodeScanner.render((text) => {
+                imeiInput.value = text.replace(/[^0-9]/g, '');
+                html5QrcodeScanner.clear();
+                scannerModal.classList.add('hidden');
+            }, () => {});
+        });
+
+        closeScanBtn.addEventListener('click', () => {
+            if (html5QrcodeScanner) html5QrcodeScanner.clear();
+            scannerModal.classList.add('hidden');
+        });
+
+        const solveAltcha = (challenge, salt, maxnumber) => {
+            for (let n = 0; n <= maxnumber; n++) {
+                const hash = CryptoJS.SHA256(salt + n).toString();
+                if (hash === challenge) return n;
+            }
+            return null;
+        };
+
+        checkBtn.addEventListener('click', async () => {
+            const imei = imeiInput.value;
+            if (!imei || imei.length < 14) {
+                errorMsg.innerText = 'IMEI နံပါတ် အမှန်ထည့်ပေးပါ။';
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            checkBtn.innerText = 'စစ်ဆေးနေသည်...';
+            checkBtn.disabled = true;
+            errorMsg.classList.add('hidden');
+            resultBox.classList.add('hidden');
+            freePassBox.classList.add('hidden');
+
+            try {
+                const start = Date.now();
+                const authRes = await fetch('https://ceir.gov.mm/openapi/API/Auth/altcha/altcha');
+                
+                if (!authRes.ok) {
+                    throw new Error(`ချိတ်ဆက်မှု မအောင်မြင်ပါ (VPN ပိတ်ထားရန် လိုအပ်နိုင်ပါသည်)`);
+                }
+                const authData = await authRes.json();
+
+                // Small delay to allow UI update
+                await new Promise(resolve => setTimeout(resolve, 50));
+                
+                const number = solveAltcha(authData.challenge, authData.salt, authData.maxnumber);
+                if (number === null) throw new Error('Challenge ဖြေရှင်း၍မရပါ။');
+
+                const altchaPayload = btoa(JSON.stringify({
+                    algorithm: authData.algorithm,
+                    challenge: authData.challenge,
+                    number: number,
+                    salt: authData.salt,
+                    signature: authData.signature,
+                    took: Date.now() - start
+                }));
+
+                const [verifyRes, infoRes] = await Promise.all([
+                    fetch(`https://ceir.gov.mm/openapi/API/IMEI/Verify?altcha=${altchaPayload}&imei=${imei}`),
+                    fetch(`https://ceir.gov.mm/openapi/API/Device/personal-device-info?altcha=${altchaPayload}&imei=${imei}`)
+                ]);
+
+                let checkData = {};
+                let infoData = {};
+
+                if (verifyRes.ok) {
+                    const json = await verifyRes.json();
+                    if (json.IMEI_CHECK_LIST && json.IMEI_CHECK_LIST.length > 0) checkData = json.IMEI_CHECK_LIST[0];
+                }
+                if (infoRes.ok) infoData = await infoRes.json();
+
+                document.getElementById('resImei').innerText = imei;
+                document.getElementById('resDevice').innerText = `${infoData.gsmaBrandName || ''} ${infoData.gsmaModelName || ''}`;
+                
+                const taxEl = document.getElementById('resTax');
+                if (checkData.paymentState === 'ACCUMULATION') {
+                    taxEl.innerText = 'Free Pass ဖုန်း'; taxEl.className = 'text-blue-400';
+                    freePassBox.classList.remove('hidden');
+                } else if (checkData.paymentState === 'PAID') {
+                    taxEl.innerText = 'အခွန်ဆောင်ပြီး'; taxEl.className = 'text-green-400';
+                } else {
+                    taxEl.innerText = 'အခွန်မဆောင်ရသေးပါ'; taxEl.className = 'text-red-400';
+                }
+
+                const blockEl = document.getElementById('resBlock');
+                if (checkData.blockState === 'UNBLOCKED') {
+                    blockEl.innerText = 'ပိတ်မထားပါ'; blockEl.className = 'text-green-400';
+                } else {
+                    blockEl.innerText = checkData.blockState || 'မသိရပါ'; blockEl.className = 'text-red-400';
+                }
+
+                resultBox.classList.remove('hidden');
+            } catch (err) {
+                errorMsg.innerText = err.message || 'စစ်ဆေးနေစဉ် အမှားအယွင်းဖြစ်ပေါ်ခဲ့ပါသည်။';
+                errorMsg.classList.remove('hidden');
+            } finally {
+                checkBtn.innerText = 'စစ်ဆေးရန်';
+                checkBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
