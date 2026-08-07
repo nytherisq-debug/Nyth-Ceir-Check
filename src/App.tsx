@@ -54,7 +54,12 @@ export default function App() {
       const start = Date.now();
       
       // 1. Get Altcha challenge
-      const authRes = await fetch('https://ceir.gov.mm/openapi/API/Auth/altcha/altcha');
+      const authRes = await fetch('https://ceir.gov.mm/openapi/API/Auth/altcha/altcha', {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Mobile Safari/537.36',
+          'Accept': 'application/json, text/plain, */*'
+        }
+      });
 
       if (!authRes.ok) {
         if (authRes.status === 403) {
@@ -89,8 +94,18 @@ export default function App() {
 
       // 3. Check IMEI and Device Info in parallel
       const [verifyRes, infoRes] = await Promise.all([
-        fetch(`https://ceir.gov.mm/openapi/API/IMEI/Verify?altcha=${altchaBase64}&imei=${imei}`),
-        fetch(`https://ceir.gov.mm/openapi/API/Device/personal-device-info?altcha=${altchaBase64}&imei=${imei}`)
+        fetch(`https://ceir.gov.mm/openapi/API/IMEI/Verify?altcha=${altchaBase64}&imei=${imei}`, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Mobile Safari/537.36',
+            'Accept': 'application/json, text/plain, */*'
+          }
+        }),
+        fetch(`https://ceir.gov.mm/openapi/API/Device/personal-device-info?altcha=${altchaBase64}&imei=${imei}`, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Mobile Safari/537.36',
+            'Accept': 'application/json, text/plain, */*'
+          }
+        })
       ]);
 
       let checkData: any = {};

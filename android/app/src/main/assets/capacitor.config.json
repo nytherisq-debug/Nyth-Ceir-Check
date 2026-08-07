@@ -1,0 +1,10 @@
+{
+	"appId": "com.myanmar.ceir",
+	"appName": "CEIR IMEI Check",
+	"webDir": "dist",
+	"plugins": {
+		"CapacitorHttp": {
+			"enabled": true
+		}
+	}
+}
